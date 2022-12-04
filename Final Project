@@ -1,0 +1,130 @@
+import gurobipy as gp
+from gurobipy import GRB
+
+m = gp.Model("MIP_electProduct")
+
+m.Params.LogToConsole = 0
+
+#simple indicators: order or not order app and desserts
+app = m.addVars(3, vtype=GRB.BINARY, name="app")
+des = m.addVars(3, vtype=GRB.BINARY, name="des")
+
+#order big portion of entree i or not
+big = m.addVars(6, vtype=GRB.BINARY, name="big")
+
+#amount eaten of small portion of entree i
+d1 = m.addVars(6, vtype=GRB.INTEGER, name="d1")
+
+#amount eaten of large portion of entree i
+d2 = m.addVars(6, vtype=GRB.INTEGER, name="d2")
+
+#satisfaction: 10 is max positive satisfaction
+
+#set satisfaction of appetizers
+bread = 4.67
+cornbread = 7.33
+salad = 5
+
+#entree satisfactions: small is same as normal
+mashed_potatoes_small = 9
+#large is marginal: after eating a small portion, what is your additional satisfaction of a big portion
+mashed_potatoes_large = 0
+turkey_small = 6
+turkey_large = -3
+cranberry_small = 6
+cranberry_large = 2
+greenbeancass_small = 5.67
+greenbeancass_large = 1.33
+sweet_potato_small = 4.67
+sweet_potato_large = 1
+stuffing_small = 5
+stuffing_large = 2
+pumpkin_pie = 6
+pecan_pie = 4.67
+creme_brulee = 8.33
+
+#set objective: entrees are divided by 5 to represent partial portions (out of a total portion size of 5) actually eaten
+m.setObjective(bread * app[0] + cornbread * app[1] + salad * app[2] + 
+               mashed_potatoes_small * (d1[0]/5) + mashed_potatoes_large * (d2[0]/5) + 
+               turkey_small * (d1[1]/5) + turkey_large * (d2[1]/5) +
+               cranberry_small * (d1[2]/5) + cranberry_large * (d2[2]/5) + 
+               greenbeancass_small * (d1[3]/5) + greenbeancass_large * (d2[3]/5) +
+               sweet_potato_small * (d1[4]/5) + sweet_potato_large * (d2[4]/5) +
+               stuffing_small * (d1[5]/5) + stuffing_large * (d2[5]/5)+
+               pumpkin_pie * des[0] + pecan_pie * des[1] + creme_brulee * des[2], GRB.MAXIMIZE)
+
+#constraints
+
+#size of portions: 0-10
+m.addConstr(big[0]*5<=d1[0])
+m.addConstr(big[1]*5<=d1[1])
+m.addConstr(big[2]*5<=d1[2])
+m.addConstr(big[3]*5<=d1[3])
+m.addConstr(big[4]*5<=d1[4])
+m.addConstr(big[5]*5<=d1[5])
+m.addConstr(d1[0]<=5)
+m.addConstr(d1[1]<=5)
+m.addConstr(d1[2]<=5)
+m.addConstr(d1[3]<=5)
+m.addConstr(d1[4]<=5)
+m.addConstr(d1[5]<=5)
+m.addConstr(0<=d2[0])
+m.addConstr(0<=d2[1])
+m.addConstr(0<=d2[2])
+m.addConstr(0<=d2[3])
+m.addConstr(0<=d2[4])
+m.addConstr(0<=d2[5])
+m.addConstr(d2[0]<=big[0]*5)
+m.addConstr(d2[1]<=big[1]*5)
+m.addConstr(d2[2]<=big[2]*5)
+m.addConstr(d2[3]<=big[3]*5)
+m.addConstr(d2[4]<=big[4]*5)
+m.addConstr(d2[5]<=big[5]*5)
+
+#cost contraints
+cost = (.84, .53, .98, 1.06, 1.06*1.75, 3.54,3.54*1.75, .18, .18*1.75, 3.33, 3.33*1.75,2.50, 2.5*1.75, .29,
+        .29*1.75,.75,.75,2.46)
+
+dec = (app[0], app[1], app[2], 1-big[0], big[0], 1-big[1], big[1], 1-big[2], big[2], 1-big[3], big[3], 
+       1-big[4], big[4], 1-big[5], big[5], des[0], des[1], des[2])
+
+m.addConstr(gp.quicksum(cost[i]*dec[i] for i in range(18)) <= 20)
+            
+#dietary constraints
+
+#calories - three quarters of daily total
+m.addConstr(154 * app[0] + 198 * app[1] + 45 * app[2] + 
+               214 * (d1[0]/5) + 214 * (d2[0]/5) + 
+               416 * (d1[1]/5) + 416 * (d2[1]/5) +
+               86 * (d1[2]/5) + 86 * (d2[2]/5) + 
+               129 * (d1[3]/5) + 129 * (d2[3]/5) +
+               123 * (d1[4]/5) + 123 * (d2[4]/5) +
+               133 * (d1[5]/5) + 133 * (d2[5]/5)+
+               318 * des[0] + 503 * des[1] + 320 * des[2] <= 2250 *.75) #possibly change with caloric input M or F
+
+#fat constraint
+m.addConstr(3.2 * app[0] + 6 * app[1] + 3.01 * app[2] + 
+               7 * (d1[0]/5) + 7 * (d2[0]/5) + 
+               13.3 * (d1[1]/5) + 13.3 * (d2[1]/5) +
+               .1 * (d1[2]/5) + .1 * (d2[2]/5) + 
+               5.2 * (d1[3]/5) + 5.2 * (d2[3]/5) +
+               1 * (d1[4]/5) + 1 * (d2[4]/5) +
+               4 * (d1[5]/5) + 4 * (d2[5]/5)+
+               15 * des[0] + 27 * des[1] + 26 * des[2] <= 87.5 *.75)
+
+#protein constraint
+m.addConstr(5.4 * app[0] + 4 * app[1] + 4.61 * app[2] + 
+               4 * (d1[0]/5) + 4 * (d2[0]/5) + 
+               69.8 * (d1[1]/5) + 69.8 * (d2[1]/5) +
+               .1 * (d1[2]/5) + .1 * (d2[2]/5) + 
+               3.7 * (d1[3]/5) + 3.7 * (d2[3]/5)+
+               5 * (d1[4]/5) + 5 * (d2[4]/5) +
+               4 * (d1[5]/5) + 4 * (d2[5]/5)+
+               6.7 * des[0] + 6 * des[1] + 4.4 * des[2] >= 51 *.75)
+
+m.optimize()
+
+print("obj_func = ", m.objVal)
+
+for v in m.getVars():
+    print('value of %s is %g' % (v.varName, v.x))
