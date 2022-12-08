@@ -130,9 +130,9 @@ for v in m.getVars():
     print('value of %s is %g' % (v.varName, v.x))
     
     
-# shadow prices
+# SHADOW PRICES
 
-  # price change
+ #PRICE CHANGE
 m = gp.Model("MIP_electProduct")
 
 m.Params.LogToConsole = 0
@@ -260,7 +260,7 @@ print("obj_func = ", m.objVal)
 
 for v in m.getVars():
     print('value of %s is %g' % (v.varName, v.x))
-  # nutrition change
+  # NUTRITION CHANGE
 
 m = gp.Model("MIP_electProduct")
 
@@ -390,7 +390,7 @@ print("obj_func = ", m.objVal)
 for v in m.getVars():
     print('value of %s is %g' % (v.varName, v.x))
 
-# cost reduction
+# COST REDUCTION ANALYSIS
 
 import random
 random.seed(3230)
